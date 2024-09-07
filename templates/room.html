@@ -1,0 +1,297 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Room - {{ room_name }}</title>
+    <style>
+        body {
+            background-color: #1E1E2F;
+            color: #FFF;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #appHeader {
+            width: 100%;
+            background-color: #3A86FF;
+            color: #FFF;
+            text-align: center;
+            font-size: 36px;
+            padding: 15px 0;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        #remoteVideo {
+            width: 100vw;
+            height: 100vh;
+            object-fit: contain;
+            display: block;
+        }
+
+        #localVideo {
+            width: 160px;
+            height: 90px;
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            border: 2px solid #fff;
+            border-radius: 5px;
+            background: #000;
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            display: flex;
+            gap: 15px;
+        }
+
+        .controlBtn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: #3A86FF;
+            color: white;
+            border: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .controlBtn.off {
+            background-color: #FF5C5C;
+        }
+
+        .controlBtn:hover {
+            background-color: #1C5D99;
+        }
+
+        #endCallBtn {
+            background-color: #FF5C5C;
+        }
+
+        #endCallBtn:hover {
+            background-color: #E03B3B;
+        }
+
+        #micStatus, #cameraStatus {
+            position: absolute;
+            bottom: 110px;
+            right: 20px;
+            font-size: 14px;
+            color: #FF5C5C;
+        }
+
+        #remoteMicStatus, #remoteCameraStatus {
+            position: absolute;
+            bottom: 110px;
+            left: 20px;
+            font-size: 14px;
+            color: #FF5C5C;
+        }
+
+        #cameraOffMessage {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            color: #FFF;
+            background-color: #2C2C3E;
+        }
+    </style>
+</head>
+<body>
+    <div id="appHeader">RSVIDCHATPY</div>
+    <video id="remoteVideo" autoplay></video>
+    <video id="localVideo" autoplay muted></video>
+
+    <div id="micStatus"></div>
+    <div id="cameraStatus"></div>
+    <div id="remoteMicStatus"></div>
+    <div id="remoteCameraStatus"></div>
+    <div id="cameraOffMessage" style="display:none;">Camera is off</div>
+
+    <div id="controls">
+        <button id="micBtn" class="controlBtn">🎤</button>
+        <button id="cameraBtn" class="controlBtn">📷</button>
+        <button id="shareScreenBtn" class="controlBtn">🖥️</button>
+        <button id="endCallBtn" class="controlBtn">🚪</button>
+    </div>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script>
+        const localVideo = document.getElementById('localVideo');
+        const remoteVideo = document.getElementById('remoteVideo');
+        const micBtn = document.getElementById('micBtn');
+        const cameraBtn = document.getElementById('cameraBtn');
+        const shareScreenBtn = document.getElementById('shareScreenBtn');
+        const endCallBtn = document.getElementById('endCallBtn');
+        const micStatus = document.getElementById('micStatus');
+        const cameraStatus = document.getElementById('cameraStatus');
+        const remoteMicStatus = document.getElementById('remoteMicStatus');
+        const remoteCameraStatus = document.getElementById('remoteCameraStatus');
+        const cameraOffMessage = document.getElementById('cameraOffMessage');
+    
+        let localStream;
+        let peerConnection;
+        const socket = io.connect(window.location.origin);
+    
+        const configuration = {
+            iceServers: [{urls: 'stun:stun.l.google.com:19302'}]
+        };
+    
+        let micOn = true;
+        let cameraOn = true;
+        let screenSharing = false;
+    
+        // Get the room name from the URL
+        const roomName = new URL(window.location.href).pathname.split('/')[2];
+    
+        async function startLocalStream() {
+            localStream = await navigator.mediaDevices.getUserMedia({
+                video: true,
+                audio: true
+            });
+            localVideo.srcObject = localStream;
+    
+            peerConnection = new RTCPeerConnection(configuration);
+            localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+    
+            peerConnection.ontrack = event => {
+                remoteVideo.srcObject = event.streams[0];
+            };
+    
+            peerConnection.onicecandidate = event => {
+                if (event.candidate) {
+                    socket.emit('signal', { candidate: event.candidate, room: roomName });
+                }
+            };
+    
+            // Join the room when the local stream is started
+            socket.emit('join', { room: roomName });
+        }
+    
+        socket.on('signal', async (data) => {
+            try {
+                console.log('Received signal:', data);
+                if (data.sdp) {
+                    const description = new RTCSessionDescription(data.sdp);
+                    
+                    // Log current state
+                    console.log('Current signaling state:', peerConnection.signalingState);
+                    
+                    if (peerConnection.signalingState === 'stable' && data.sdp.type === 'offer') {
+                        // If we're in stable state and receive an offer, we should not process it
+                        console.warn('Ignoring offer while in stable state');
+                        return;
+                    }
+    
+                    if (data.sdp.type === 'offer') {
+                        await peerConnection.setRemoteDescription(description);
+                        const answer = await peerConnection.createAnswer();
+                        await peerConnection.setLocalDescription(answer);
+                        socket.emit('signal', { sdp: peerConnection.localDescription, room: roomName });
+                    } else if (data.sdp.type === 'answer') {
+                        await peerConnection.setRemoteDescription(description);
+                    }
+                } else if (data.candidate) {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+                } else if (data.micStatus !== undefined) {
+                    remoteMicStatus.innerText = data.micStatus ? '' : `Remote mic is turned off`;
+                } else if (data.cameraStatus !== undefined) {
+                    remoteCameraStatus.innerText = data.cameraStatus ? '' : `Remote camera is turned off`;
+                }
+            } catch (error) {
+                console.error("Error handling signal:", error);
+            }
+        });
+    
+        async function makeCall() {
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+            socket.emit('signal', { sdp: peerConnection.localDescription, room: roomName });
+        }
+    
+        micBtn.addEventListener('click', () => {
+            micOn = !micOn;
+            localStream.getAudioTracks()[0].enabled = micOn;
+            micBtn.classList.toggle('off', !micOn);
+            micStatus.innerText = micOn ? '' : `Your mic is turned off`;
+            socket.emit('signal', { micStatus: micOn, room: roomName });
+        });
+    
+        cameraBtn.addEventListener('click', () => {
+            cameraOn = !cameraOn;
+            localStream.getVideoTracks()[0].enabled = cameraOn;
+            cameraBtn.classList.toggle('off', !cameraOn);
+            cameraOffMessage.style.display = cameraOn ? 'none' : 'flex';
+            cameraStatus.innerText = cameraOn ? '' : `Your camera is turned off`;
+            socket.emit('signal', { cameraStatus: cameraOn, room: roomName });
+        });
+    
+        shareScreenBtn.addEventListener('click', async () => {
+            if (!screenSharing) {
+                const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+                const combinedStream = new MediaStream([...screenStream.getVideoTracks(), ...localStream.getAudioTracks()]);
+    
+                // Replace camera track with screen track
+                peerConnection.getSenders().forEach(sender => {
+                    if (sender.track.kind === 'video') {
+                        sender.replaceTrack(screenStream.getVideoTracks()[0]);
+                    }
+                });
+    
+                localVideo.srcObject = screenStream;
+                screenSharing = true;
+    
+                // Handle screen share end
+                screenStream.getVideoTracks()[0].onended = () => {
+                    stopScreenSharing();
+                };
+            } else {
+                stopScreenSharing();
+            }
+        });
+    
+        function stopScreenSharing() {
+            screenSharing = false;
+            cameraOn = true;
+    
+            // Restore camera stream
+            localStream.getVideoTracks()[0].enabled = true;
+            cameraBtn.classList.remove('off');
+            cameraOffMessage.style.display = 'none';
+    
+            peerConnection.getSenders().forEach(sender => {
+                if (sender.track.kind === 'video') {
+                    sender.replaceTrack(localStream.getVideoTracks()[0]);
+                }
+            });
+    
+            localVideo.srcObject = localStream;
+        }
+    
+        endCallBtn.addEventListener('click', () => {
+            peerConnection.close();
+            socket.emit('leave', { room: roomName });
+            window.location.href = '/';
+        });
+    
+        startLocalStream().then(makeCall);
+    </script>
+    
+</body>
+</html>
