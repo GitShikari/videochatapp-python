@@ -1,45 +1,4 @@
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>vchatpy README</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 20px;
-        }
-        h1, h2, h3 {
-            color: #333;
-        }
-        code {
-            background: #f4f4f4;
-            padding: 2px 4px;
-            border-radius: 4px;
-            font-family: monospace;
-        }
-        pre {
-            background: #f4f4f4;
-            padding: 10px;
-            border-radius: 4px;
-            overflow-x: auto;
-        }
-        ul {
-            list-style-type: disc;
-            margin-left: 20px;
-        }
-        .note {
-            background-color: #fff3cd;
-            border-left: 6px solid #ffeeba;
-            padding: 10px;
-            margin-bottom: 20px;
-        }
-    </style>
-</head>
-<body>
 
     <h1>vchatpy</h1>
 
@@ -123,5 +82,3 @@ Flask-SocketIO
     <h2>License</h2>
     <p>This project is licensed under the MIT License - see the <a href="LICENSE">LICENSE</a> file for details.</p>
 
-</body>
-</html>
