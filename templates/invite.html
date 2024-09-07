@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RSVIDCHATPY - Invite</title>
+    <style>
+        body {
+            background-color: #1E1E2F;
+            color: #FFF;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+        }
+        #appHeader {
+            width: 100%;
+            background-color: #3A86FF;
+            color: #FFF;
+            text-align: center;
+            font-size: 36px;
+            padding: 15px 0;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        .invite-container {
+            background-color: #2C2C3E;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            color: #FFF;
+        }
+        .invite-link {
+            display: block;
+            padding: 10px;
+            border: 1px solid #FFF;
+            border-radius: 5px;
+            background-color: #3A86FF;
+            color: #FFF;
+            text-decoration: none;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        .invite-link:hover {
+            background-color: #1C5D99;
+        }
+        button {
+            background-color: #3A86FF;
+            border: none;
+            color: #FFF;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 16px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="appHeader">RSVIDCHATPY</div>
+    <div class="invite-container">
+        <h1>Room Created!</h1>
+        <p>Share this link to invite others to join your room:</p>
+        <a class="invite-link" href="{{ url_for('room', room_name=room_name) }}" id="inviteLink">Join Room</a>
+        <button onclick="copyLink()">Copy Link</button>
+    </div>
+
+    <script>
+        function copyLink() {
+            const link = document.getElementById('inviteLink').href;
+            navigator.clipboard.writeText(link).then(() => {
+                alert('Link copied to clipboard!');
+            });
+        }
+    </script>
+</body>
+</html>
