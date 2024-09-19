@@ -18,7 +18,7 @@
         }
         #appHeader {
             width: 100%;
-            background-color: #3A86FF;
+            background-color: #3a85ff;
             color: #FFF;
             text-align: center;
             font-size: 36px;
@@ -148,16 +148,7 @@
         let localStream;
         let peerConnection;
         const socket = io.connect(window.location.origin);
-        // const socket = io.connect(window.location.origin);
-
-        socket.on('connect', () => {
-            console.log('Connected to WebSocket server');
-        });
-        
-        socket.on('disconnect', () => {
-            console.log('Disconnected from WebSocket server');
-        });
-
+    
         const configuration = {
             iceServers: [{urls: 'stun:stun.l.google.com:19302'}]
         };
